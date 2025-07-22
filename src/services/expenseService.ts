@@ -42,10 +42,21 @@ class ExpenseService {
       if (params?.limit) queryParams.append('limit', params.limit.toString());
       if (params?.filters?.category) queryParams.append('category', params.filters.category);
       if (params?.filters?.status) queryParams.append('status', params.filters.status);
-      if (params?.filters?.dateFrom) queryParams.append('startDate', params.filters.dateFrom.toISOString());
-      if (params?.filters?.dateTo) queryParams.append('endDate', params.filters.dateTo.toISOString());
+      
+      // Use single date parameter with proper formatting to avoid timezone issues
+      if (params?.filters?.dateFrom) {
+        // Format date as YYYY-MM-DD using local date components
+        const date = params.filters.dateFrom;
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const formattedDate = `${year}-${month}-${day}`;
+        queryParams.append('date', formattedDate);
+      }
       
       const url = `/api/expenses${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      console.log('API URL:', url); // For debugging
+      
       const response = await apiClient.get<{ expenses: any[], total: number, page: number, totalPages: number }>(url);
       
       console.log('Raw API response in service:', response);

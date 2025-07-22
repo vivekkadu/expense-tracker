@@ -27,11 +27,26 @@ const ExpensesPage: React.FC = () => {
   const pagination = expensesState.pagination;
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  // Memoized filters from URL
-  const filters = useMemo((): ExpenseFilters => ({
-    category: searchParams.get('category') || undefined,
-    status: searchParams.get('status') || undefined,
-  }), [searchParams]);
+  // Memoized filters from URL with date support
+  const filters = useMemo((): ExpenseFilters => {
+    const filterObj: ExpenseFilters = {
+      category: searchParams.get('category') || undefined,
+      status: searchParams.get('status') || undefined,
+    };
+    
+    // Handle date filters
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
+    
+    if (dateFrom) {
+      filterObj.dateFrom = new Date(dateFrom);
+    }
+    if (dateTo) {
+      filterObj.dateTo = new Date(dateTo);
+    }
+    
+    return filterObj;
+  }, [searchParams]);
   
   // Memoized pagination values
   const currentPage = useMemo(() => {
@@ -72,6 +87,7 @@ const ExpensesPage: React.FC = () => {
   }, [searchParams, setSearchParams, dispatch]);
   
   // Handle filters change
+  // Enhanced handleFiltersChange to support dates
   const handleFiltersChange = useCallback((newFilters: ExpenseFilters) => {
     const newSearchParams = new URLSearchParams();
     newSearchParams.set('page', '1');
@@ -82,6 +98,12 @@ const ExpensesPage: React.FC = () => {
     }
     if (newFilters.status) {
       newSearchParams.set('status', newFilters.status);
+    }
+    if (newFilters.dateFrom) {
+      newSearchParams.set('dateFrom', newFilters.dateFrom.toISOString().split('T')[0]);
+    }
+    if (newFilters.dateTo) {
+      newSearchParams.set('dateTo', newFilters.dateTo.toISOString().split('T')[0]);
     }
     
     setSearchParams(newSearchParams);
