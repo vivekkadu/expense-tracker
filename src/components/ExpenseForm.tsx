@@ -112,8 +112,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
         Add New Expense
       </Typography>
 
-      
-
       <Card>
         <CardContent>
           {error && (
@@ -123,7 +121,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
           )}
 
           <Box component="form" onSubmit={handleSubmit}>
-            <Stack spacing={2}>
+            <Stack spacing={2.2}>
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 <TextField
                   sx={{ flex: 1, minWidth: '200px' }}

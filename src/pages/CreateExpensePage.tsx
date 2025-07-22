@@ -19,20 +19,18 @@ const CreateExpensePage: React.FC = () => {
   };
 
   return (
-    <Container sx={{ my: 2, py: 2, mx: 2, backgroundColor: '#ffff' }}>
-      <Stack spacing={3}>
+    <Container sx={{ my: 2, py: 1, mx: 0, backgroundColor: '#ffff' }}>
         <Box>
           <Button
             startIcon={<ArrowBack />}
             onClick={() => navigate('/expenses')}
-            sx={{ mb: 2 }}
+            sx={{ mb: 1.5 }}
           >
             Back to Expenses
           </Button>
         </Box>
 
         <ExpenseForm onExpenseAdded={handleExpenseAdded} />
-      </Stack>
     </Container>
   );
 };
