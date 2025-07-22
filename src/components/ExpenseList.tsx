@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -13,52 +13,48 @@ import {
   Chip,
   Button,
   Box,
-  CircularProgress,
   TextField,
   MenuItem,
-  Stack
+  Stack,
+  Pagination
 } from '@mui/material';
 import { CheckCircle, Cancel, Pending } from '@mui/icons-material';
 import { Expense, User } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants';
-import { apiService } from '../services/api';
+import { useAppDispatch } from '../store';
+import { updateExpenseAsync } from '../store/slices/expenseSlice';
+import { updateExpenseStatusAsync } from '../store/slices/expenseSlice';
+import { expenseService } from '../services/expenseService';
 
 interface ExpenseListProps {
-  currentUser: User;
+  currentUser: User | null;  // Allow null
+  expenses: Expense[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
   refreshTrigger: number;
   onRefresh: () => void;
 }
 
-const ExpenseList: React.FC<ExpenseListProps> = ({ currentUser, refreshTrigger, onRefresh }) => {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
+const ExpenseList: React.FC<ExpenseListProps> = ({ 
+  currentUser, 
+  expenses, 
+  pagination, 
+  refreshTrigger, 
+  onRefresh 
+}) => {
+  const dispatch = useAppDispatch();
   const [filter, setFilter] = useState({
     category: '',
     status: ''
   });
 
-  useEffect(() => {
-    const fetchExpenses = async () => {
-      setLoading(true);
-      try {
-        const expenseList = await apiService.getExpenses(
-          currentUser.role === 'employee' ? currentUser.id : undefined
-        );
-        setExpenses(expenseList);
-      } catch (error) {
-        console.error('Failed to fetch expenses:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchExpenses();
-  }, [currentUser, refreshTrigger]);
-
   const handleStatusUpdate = async (expenseId: string, status: 'approved' | 'rejected') => {
     try {
-
-        
+      await dispatch(updateExpenseStatusAsync({ id: expenseId, status }) as any).unwrap();
       onRefresh();
     } catch (error) {
       console.error('Failed to update expense status:', error);
@@ -93,18 +89,18 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ currentUser, refreshTrigger, 
     return categoryMatch && statusMatch;
   });
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
+  console.log('ExpenseList: Received expenses:', expenses);
+  console.log('ExpenseList: Current user:', currentUser);
+  
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
-        Expenses {currentUser.role === 'admin' && '(All Team Members)'}
+        Expenses {currentUser?.role === 'admin' && '(All Team Members)'}
+      </Typography>
+      
+      {/* Add debug info */}
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Total expenses: {expenses?.length || 0}
       </Typography>
       
       <Card sx={{ mb: 3 }}>
@@ -152,8 +148,9 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ currentUser, refreshTrigger, 
               <TableCell>Amount</TableCell>
               <TableCell>Category</TableCell>
               <TableCell>Description</TableCell>
+              {currentUser?.role === 'admin' && <TableCell>Employee</TableCell>}
               <TableCell>Status</TableCell>
-              {currentUser.role === 'admin' && <TableCell>Actions</TableCell>}
+              {currentUser?.role === 'admin' && <TableCell>Actions</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -167,6 +164,11 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ currentUser, refreshTrigger, 
                 <TableCell>${expense.amount.toFixed(2)}</TableCell>
                 <TableCell>{expense.category}</TableCell>
                 <TableCell>{expense.description}</TableCell>
+                {currentUser?.role === 'admin' && (
+                  <TableCell>
+                    {expense.user ? `${expense.user.firstName} ${expense.user.lastName}` : 'Unknown'}
+                  </TableCell>
+                )}
                 <TableCell>
                   <Box display="flex" alignItems="center" gap={1}>
                     {getStatusIcon(expense.status)}
@@ -177,7 +179,7 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ currentUser, refreshTrigger, 
                     />
                   </Box>
                 </TableCell>
-                {currentUser.role === 'admin' && (
+                {currentUser?.role === 'admin' && (
                   <TableCell>
                     {expense.status === 'pending' && (
                       <Stack direction="row" spacing={1}>
@@ -206,6 +208,29 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ currentUser, refreshTrigger, 
           </TableBody>
         </Table>
       </TableContainer>
+      
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <Box display="flex" justifyContent="center" mt={3}>
+          <Pagination
+            count={pagination.totalPages}
+            page={pagination.page}
+            onChange={(event, page) => {
+              // Pagination handling would be done in parent component
+              // For now, we'll just call onRefresh
+              onRefresh();
+            }}
+            color="primary"
+          />
+        </Box>
+      )}
+      
+      {/* Results summary */}
+      <Box mt={2} textAlign="center">
+        <Typography variant="body2" color="text.secondary">
+          Showing {filteredExpenses.length} of {pagination.total} expenses
+        </Typography>
+      </Box>
       
       {filteredExpenses.length === 0 && (
         <Box textAlign="center" py={4}>

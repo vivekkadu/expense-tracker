@@ -35,9 +35,12 @@ export const fetchExpensesAsync = createAsyncThunk<
   { rejectValue: string }
 >('expenses/fetchExpenses', async (params, { rejectWithValue }) => {
   try {
+    console.log('Fetching expenses with params:', params);
     const response = await expenseService.getExpenses(params);
+    console.log('Expense service response:', response);
     return response;
   } catch (error: unknown) {
+    console.error('fetchExpensesAsync error:', error);
     const message =
       error instanceof Error ? error.message : 'Failed to fetch expenses';
     return rejectWithValue(message);
@@ -93,14 +96,14 @@ export const deleteExpenseAsync = createAsyncThunk<
 });
 
 export const fetchStatsAsync = createAsyncThunk<
-  ApiResponse<ExpenseStats>,
+  ExpenseStats,
   ExpenseFilters | undefined,
   { rejectValue: string }
 >(
   'expenses/fetchStats',
   async (filters: ExpenseFilters | undefined, { rejectWithValue }) => {
     try {
-      const response = await expenseService.getStats(filters);
+      const response = await expenseService.getStats();
       return response;
     } catch (error: unknown) {
       const message =
@@ -109,6 +112,21 @@ export const fetchStatsAsync = createAsyncThunk<
     }
   }
 );
+
+export const updateExpenseStatusAsync = createAsyncThunk<
+  ApiResponse<Expense>,
+  { id: string; status: string },
+  { rejectValue: string }
+>('expenses/updateExpenseStatus', async ({ id, status }, { rejectWithValue }) => {
+  try {
+    const response = await expenseService.updateExpenseStatus(id, status);
+    return response;
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to update expense status';
+    return rejectWithValue(message);
+  }
+});
 
 const expenseSlice = createSlice({
   name: 'expenses',
@@ -143,9 +161,11 @@ const expenseSlice = createSlice({
           state: ExpenseState,
           action: PayloadAction<PaginatedResponse<Expense>>
         ) => {
+          console.log('fetchExpensesAsync.fulfilled - payload:', action.payload);
           state.isLoading = false;
           state.expenses = action.payload.data;
           state.pagination = action.payload.pagination;
+          console.log('Updated state.expenses:', state.expenses);
         }
       )
       .addCase(
@@ -203,12 +223,44 @@ const expenseSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-
+      .addCase(
+        deleteExpenseAsync.fulfilled,
+        (state: ExpenseState, action) => {
+          state.isLoading = false;
+          // Remove the deleted expense from the state
+          const expenseId = action.meta.arg; // Get the ID from the thunk argument
+          state.expenses = state.expenses.filter(exp => exp.id !== expenseId);
+        }
+      )
       .addCase(
         deleteExpenseAsync.rejected,
         (state: ExpenseState, action: PayloadAction<string | undefined>) => {
           state.isLoading = false;
           state.error = action.payload || 'Failed to delete expense';
+        }
+      )
+      // Update Expense Status
+      .addCase(updateExpenseStatusAsync.pending, (state: ExpenseState) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(
+        updateExpenseStatusAsync.fulfilled,
+        (state: ExpenseState, action: PayloadAction<ApiResponse<Expense>>) => {
+          state.isLoading = false;
+          const index = state.expenses.findIndex(
+            exp => exp.id === action.payload.data.id
+          );
+          if (index !== -1) {
+            state.expenses[index] = action.payload.data;
+          }
+        }
+      )
+      .addCase(
+        updateExpenseStatusAsync.rejected,
+        (state: ExpenseState, action: PayloadAction<string | undefined>) => {
+          state.isLoading = false;
+          state.error = action.payload || 'Failed to update expense status';
         }
       )
       // Fetch Stats
@@ -220,15 +272,15 @@ const expenseSlice = createSlice({
         fetchStatsAsync.fulfilled,
         (
           state: ExpenseState,
-          action: PayloadAction<ApiResponse<ExpenseStats>>
+          action: PayloadAction<ExpenseStats>
         ) => {
           state.isLoading = false;
-          state.stats = action.payload.data;
+          state.stats = action.payload;
         }
       )
       .addCase(
         fetchStatsAsync.rejected,
-        (state: ExpenseState, action: PayloadAction<string | undefined>) => {
+        (state: ExpenseState, action) => {
           state.isLoading = false;
           state.error = action.payload || 'Failed to fetch stats';
         }

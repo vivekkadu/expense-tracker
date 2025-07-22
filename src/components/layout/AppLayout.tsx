@@ -143,10 +143,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               {!isMobile && (
                 <Box sx={{ textAlign: 'right' }}>
                   <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {user.name}
+                    {user.name || `${user.firstName} ${user.lastName}`}
                   </Typography>
                   <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                    {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User'}
                   </Typography>
                 </Box>
               )}
@@ -158,7 +158,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 color="inherit"
               >
                 <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
-                  {user.name.charAt(0).toUpperCase()}
+                  {(user.name || user.firstName || 'U').charAt(0).toUpperCase()}
                 </Avatar>
               </IconButton>
               

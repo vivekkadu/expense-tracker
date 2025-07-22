@@ -9,11 +9,13 @@ import {
   Box,
   Menu,
   MenuItem,
-  IconButton
+  IconButton,
 } from '@mui/material';
 import { AccountCircle, ExitToApp } from '@mui/icons-material';
 import { User } from '../types';
-import { apiService } from '../services/api';
+import { authService } from '../services/authService';
+import { useAppDispatch, useAppSelector } from '../store';
+import { fetchExpensesAsync } from '../store/slices/expenseSlice';
 import Dashboard from './Dashboard';
 import ExpenseList from './ExpenseList';
 import ExpenseForm from './ExpenseForm';
@@ -47,27 +49,50 @@ const ExpenseTracker: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  const dispatch = useAppDispatch();
+  const expensesState = useAppSelector(state => state.expenses);
+  const expenses = expensesState.expenses;
+  const pagination = expensesState.pagination;
+
   useEffect(() => {
     // Check if user is already logged in
-    const user = apiService.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-    }
+    const checkCurrentUser = async () => {
+      try {
+        const response = await authService.getCurrentUser();
+        setCurrentUser(response.data);
+      } catch (error) {
+        console.log('No user logged in');
+      }
+    };
+
+    checkCurrentUser();
   }, []);
 
-  const handleLogin = async (email: string) => {
+  useEffect(() => {
+    if (currentUser) {
+      dispatch(fetchExpensesAsync({}) as any);
+    }
+  }, [currentUser, refreshTrigger, dispatch]);
+
+  const handleLogin = async (email: string, password: string) => {
     try {
-      const user = await apiService.login(email);
-      setCurrentUser(user);
+      const response = await authService.login({ email, password });
+      setCurrentUser(response.data.user);
     } catch (error) {
       console.error('Login failed:', error);
+      throw error;
     }
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setTabValue(0);
-    setAnchorEl(null);
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      setCurrentUser(null);
+      setTabValue(0);
+      setAnchorEl(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -87,9 +112,12 @@ const ExpenseTracker: React.FC = () => {
     setTabValue(1); // Switch to expense list tab
   };
 
-  if (!currentUser) {
-    return <LoginForm onLogin={handleLogin} />;
-  }
+  const handleRefresh = () => {
+    setRefreshTrigger(prev => prev + 1);
+    if (currentUser) {
+      dispatch(fetchExpensesAsync({}) as any);
+    }
+  };
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -99,9 +127,12 @@ const ExpenseTracker: React.FC = () => {
             Expense Tracker
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body2" sx={{ mr: 2 }}>
-              {currentUser.name} ({currentUser.role})
-            </Typography>
+            {currentUser && (
+              <Typography variant="body2" sx={{ mr: 2 }}>
+                {`${currentUser.firstName} ${currentUser.lastName}`} (
+                {currentUser.role})
+              </Typography>
+            )}
             <IconButton
               size="large"
               aria-label="account of current user"
@@ -138,7 +169,11 @@ const ExpenseTracker: React.FC = () => {
 
       <Container maxWidth="lg">
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2 }}>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="expense tracker tabs">
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            aria-label="expense tracker tabs"
+          >
             <Tab label="Dashboard" />
             <Tab label="Expenses" />
             <Tab label="Add Expense" />
@@ -149,11 +184,15 @@ const ExpenseTracker: React.FC = () => {
           <Dashboard refreshTrigger={refreshTrigger} />
         </TabPanel>
         <TabPanel value={tabValue} index={1}>
-          <ExpenseList 
-            currentUser={currentUser} 
-            refreshTrigger={refreshTrigger}
-            onRefresh={() => setRefreshTrigger(prev => prev + 1)}
-          />
+          {currentUser && (
+            <ExpenseList
+              currentUser={currentUser}
+              expenses={expenses}
+              pagination={pagination}
+              refreshTrigger={refreshTrigger}
+              onRefresh={handleRefresh}
+            />
+          )}
         </TabPanel>
         <TabPanel value={tabValue} index={2}>
           <ExpenseForm onExpenseAdded={handleExpenseAdded} />

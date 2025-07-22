@@ -6,10 +6,13 @@ export interface BaseEntity {
 
 export interface User extends BaseEntity {
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  name?: string; // Computed field for backward compatibility
   role: UserRole;
   department?: string;
   avatar?: string;
+  isActive: boolean;
 }
 
 export enum UserRole {
@@ -66,6 +69,23 @@ export interface ExpenseFilters {
   search?: string;
 }
 
+export interface DashboardStats {
+  totalStats: {
+    totalExpenses: number;
+    pendingExpenses: string;
+    approvedExpenses: string;
+    rejectedExpenses: string;
+    totalApprovedAmount: string;
+    totalAmount: string; // Add this property
+  };
+  categoryStats: Array<{
+    category: string;
+    count: number;
+    totalAmount: string;
+  }>;
+}
+
+// Update ExpenseStats to work with the new API
 export interface ExpenseStats {
   totalAmount: number;
   totalCount: number;
@@ -74,7 +94,7 @@ export interface ExpenseStats {
   approvedAmount: number;
   approvedCount: number;
   rejectedCount: number;
-  categoryBreakdown: Record<ExpenseCategory, number>;
+  categoryBreakdown: Record<string, number>;
   monthlyTrend: Array<{
     month: string;
     amount: number;
@@ -127,4 +147,36 @@ export interface ApiError {
   message: string;
   code: string;
   details?: Record<string, unknown>;
+}
+
+// Add this interface for the API response
+export interface ExpenseApiResponse {
+  expenses: Array<{
+    id: number;
+    title: string;
+    description: string;
+    amount: string;
+    category: string;
+    status: string;
+    expenseDate: string;
+    receiptUrl: string | null;
+    rejectionReason: string | null;
+    userId: number;
+    approvedBy: number | null;
+    createdAt: string;
+    updatedAt: string;
+    user: {
+      id: number;
+      email: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+      isActive: boolean;
+      createdAt: string;
+      updatedAt: string;
+    };
+  }>;
+  total: number;
+  page: number;
+  totalPages: number;
 }

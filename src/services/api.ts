@@ -1,11 +1,10 @@
-import { Expense, ExpenseFormData, User, ExpenseStats, ExpenseCategory, ExpenseStatus } from '../types';
-import { mockUsers, mockExpenses } from './mockData';
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { Expense, ExpenseFormData, User, ExpenseStats, ExpenseCategory, ExpenseStatus, UserRole, ExpenseApiResponse } from '../types';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { ApiResponse } from '@/types';
 
 class ApiService {
-  private expenses: Expense[] = [...mockExpenses];
-  private users: User[] = [...mockUsers];
+  private expenses: Expense[] = [];
+  private users: User[] = [];
   private currentUser: User = this.users[0]; // Mock current user
 
   // Auth methods
@@ -28,12 +27,71 @@ class ApiService {
   }
 
   // Expense methods
+  // Update the getExpenses method
   getExpenses(userId?: string): Promise<Expense[]> {
     return new Promise((resolve) => {
       setTimeout(() => {
-        let filteredExpenses = this.expenses;
+        // Mock the new API response format
+        const mockApiResponse: ExpenseApiResponse = {
+          expenses: this.expenses.map(expense => ({
+            id: parseInt(expense.id),
+            title: expense.description, // Using description as title
+            description: expense.description,
+            amount: expense.amount.toString(),
+            category: expense.category,
+            status: expense.status,
+            expenseDate: expense.date.toISOString().split('T')[0],
+            receiptUrl: expense.receipt || null,
+            rejectionReason: expense.rejectionReason || null,
+            userId: parseInt(expense.userId),
+            approvedBy: expense.approvedBy ? parseInt(expense.approvedBy) : null,
+            createdAt: expense.createdAt.toISOString(),
+            updatedAt: expense.updatedAt.toISOString(),
+            user: {
+              id: parseInt(expense.userId),
+              email: this.users.find(u => u.id === expense.userId)?.email || '',
+              firstName: this.users.find(u => u.id === expense.userId)?.firstName || '',
+              lastName: this.users.find(u => u.id === expense.userId)?.lastName || '',
+              role: this.users.find(u => u.id === expense.userId)?.role || 'employee',
+              isActive: true,
+              createdAt: expense.createdAt.toISOString(),
+              updatedAt: expense.updatedAt.toISOString()
+            }
+          })),
+          total: this.expenses.length,
+          page: 1,
+          totalPages: Math.ceil(this.expenses.length / 10)
+        };
+  
+        // Transform the API response back to the expected Expense format
+        const transformedExpenses: Expense[] = mockApiResponse.expenses.map((apiExpense: ExpenseApiResponse['expenses'][0]) => ({
+          id: apiExpense.id.toString(),
+          amount: parseFloat(apiExpense.amount),
+          category: apiExpense.category as ExpenseCategory,
+          description: apiExpense.description,
+          date: new Date(apiExpense.expenseDate),
+          status: apiExpense.status as ExpenseStatus,
+          userId: apiExpense.userId.toString(),
+          user: {
+            id: apiExpense.user.id.toString(),
+            email: apiExpense.user.email,
+            firstName: apiExpense.user.firstName,
+            lastName: apiExpense.user.lastName,
+            role: apiExpense.user.role as UserRole,
+            isActive: apiExpense.user.isActive,
+            createdAt: new Date(apiExpense.user.createdAt),
+            updatedAt: new Date(apiExpense.user.updatedAt)
+          },
+          receipt: apiExpense.receiptUrl || undefined,
+          approvedBy: apiExpense.approvedBy?.toString(),
+          rejectionReason: apiExpense.rejectionReason || undefined,
+          createdAt: new Date(apiExpense.createdAt),
+          updatedAt: new Date(apiExpense.updatedAt)
+        }));
+  
+        let filteredExpenses = transformedExpenses;
         if (userId && this.currentUser.role === 'employee') {
-          filteredExpenses = this.expenses.filter(e => e.userId === userId);
+          filteredExpenses = transformedExpenses.filter(e => e.userId === userId);
         }
         resolve(filteredExpenses);
       }, 300);
@@ -143,7 +201,7 @@ export const apiService = new ApiService();
 class ApiClient {
   private client: AxiosInstance;
 
-  constructor(baseURL: string = process.env.REACT_APP_API_URL || 'http://localhost:3001/api') {
+  constructor(baseURL: string = 'http://13.233.143.17:3000') {
     this.client = axios.create({
       baseURL,
       timeout: 10000,
@@ -151,7 +209,7 @@ class ApiClient {
         'Content-Type': 'application/json',
       },
     });
-
+    
     this.setupInterceptors();
   }
 
@@ -170,10 +228,11 @@ class ApiClient {
 
     // Response interceptor
     this.client.interceptors.response.use(
-      (response: AxiosResponse) => response,
-      async (error) => {
+      (response) => response,
+      (error) => {
         if (error.response?.status === 401) {
           localStorage.removeItem('token');
+          localStorage.removeItem('user');
           window.location.href = '/login';
         }
         return Promise.reject(error);
@@ -193,6 +252,11 @@ class ApiClient {
 
   async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     const response = await this.client.put<ApiResponse<T>>(url, data, config);
+    return response.data;
+  }
+
+  async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    const response = await this.client.patch<ApiResponse<T>>(url, data, config);
     return response.data;
   }
 

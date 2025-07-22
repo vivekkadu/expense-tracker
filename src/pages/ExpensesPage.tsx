@@ -17,27 +17,55 @@ const ExpensesPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { user, isLoading: authLoading } = useAppSelector((state) => state.auth);
+  const expensesState = useAppSelector((state) => state.expenses);
+  const expenses = expensesState.expenses;
+  const expensesLoading = expensesState.isLoading;
+  const pagination = expensesState.pagination;
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  console.log("expenses", expenses)
 
   const fetchExpenses = async () => {
     try {
-      await dispatch(fetchExpensesAsync({}) as any).unwrap();
+      console.log('ExpensesPage: Starting to fetch expenses');
+      const result = await dispatch(fetchExpensesAsync({}) as any).unwrap();
+      console.log('ExpensesPage: Fetch expenses result:', result);
     } catch (error) {
-      console.error('Failed to fetch expenses:', error);
+      console.error('ExpensesPage: Failed to fetch expenses:', error);
     }
   };
 
   useEffect(() => {
-    fetchExpenses();
-  }, []);
+    console.log('ExpensesPage: Component mounted, user:', user);
+    if (user) {
+      fetchExpenses();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    console.log('ExpensesPage: Expenses updated:', expenses);
+    console.log('ExpensesPage: Expenses length:', expenses?.length);
+  }, [expenses]);
+
+  useEffect(() => {
+    console.log('ExpensesPage: Expenses state updated:', expenses);
+    console.log('ExpensesPage: Expenses loading state:', expensesLoading);
+    console.log('ExpensesPage: Expenses error state:', expensesState.error);
+  }, [expenses, expensesLoading, expensesState.error]);
 
   const handleRefresh = () => {
     setRefreshTrigger(prev => prev + 1);
     fetchExpenses();
   };
 
+  // Add useEffect to refetch when returning from create page
+  useEffect(() => {
+    if (user) {
+      fetchExpenses();
+    }
+  }, [user, refreshTrigger]);
+
   // Handle loading state
-  if (authLoading) {
+  if (authLoading || expensesLoading) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -47,8 +75,8 @@ const ExpensesPage: React.FC = () => {
     );
   }
 
-  // Handle case where user is not authenticated
-  if (!user) {
+  // Handle case where user is not authenticated or incomplete
+  if (!user || !user.id) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Typography variant="h6" align="center">
@@ -87,7 +115,9 @@ const ExpensesPage: React.FC = () => {
       </Stack>
       
       <ExpenseList 
-        currentUser={user!} 
+        currentUser={user} 
+        expenses={expenses || []}
+        pagination={pagination}
         refreshTrigger={refreshTrigger}
         onRefresh={handleRefresh}
       />

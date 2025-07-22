@@ -32,7 +32,7 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null); // Fixed typo: useSztate -> useState
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
@@ -91,16 +91,26 @@ const LoginPage: React.FC = () => {
     
     try {
       // Dispatch the login action and unwrap the result
-      await dispatch(loginAsync({
+      const result = await dispatch(loginAsync({
         email: formData.email,
         password: formData.password,
       })).unwrap();
       
-      // If we reach here, login was successful
-      navigate('/dashboard');
+      // Check if login was successful
+      if (result.success && result.data.user && result.data.token) {
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          navigate('/dashboard', { replace: true });
+        }, 100);
+      } else {
+        setLoginError('Login failed. Please check your credentials.');
+      }
     } catch (error) {
       // Handle login errors
-      const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';
+      console.error('Login error:', error);
+      const errorMessage = typeof error === 'string' ? error : 
+                          error instanceof Error ? error.message : 
+                          'Login failed. Please try again.';
       setLoginError(errorMessage);
     }
   };

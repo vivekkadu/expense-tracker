@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
-import { store } from '@/store';
-import { useAppSelector } from '@/store';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { store } from './store';
+import { useAppSelector, useAppDispatch } from '@/store';
+import { getCurrentUserAsync } from '@/store/slices/authSlice';
 import AppLayout from '@/components/layout/AppLayout';
 import LoginPage from '@/pages/LoginPage';
 import DashboardPage from '@/pages/DashboardPage';
@@ -54,19 +58,54 @@ const theme = createTheme({
 });
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isLoading } = useAppSelector((state) => state.auth);
-  const isAuthenticated = !!user && !!localStorage.getItem('token');
+  const { user, isLoading, token } = useAppSelector((state) => state.auth);
+  const isAuthenticated = !!user && !!token && !!localStorage.getItem('token');
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        Loading...
+      </div>
+    );
   }
 
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
 const AppRoutes: React.FC = () => {
-  const { user } = useAppSelector((state) => state.auth);
-  const isAuthenticated = !!user && !!localStorage.getItem('token');
+  const dispatch = useAppDispatch();
+  const { user, token, isLoading } = useAppSelector((state) => state.auth);
+  const isAuthenticated = !!user && !!token && !!localStorage.getItem('token');
+
+  // Initialize user data on app start if token exists
+  useEffect(() => {
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    
+    if (storedToken && storedUser && !user) {
+      // Try to get current user to validate token
+      dispatch(getCurrentUserAsync());
+    }
+  }, [dispatch, user]);
+
+  // Show loading while initializing
+  if (isLoading && !user && localStorage.getItem('token')) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <Routes>
@@ -104,7 +143,7 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       />
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
     </Routes>
   );
 };
@@ -117,6 +156,17 @@ const App: React.FC = () => {
         <Router>
           <AppRoutes />
         </Router>
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+        />
       </ThemeProvider>
     </Provider>
   );

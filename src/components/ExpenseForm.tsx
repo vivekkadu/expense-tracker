@@ -11,15 +11,18 @@ import {
   Stack,
 } from '@mui/material';
 import dayjs, { Dayjs } from 'dayjs';
+import { toast } from 'react-toastify';
 import { ExpenseFormData, ExpenseCategory } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants';
-import { apiService } from '../services/api';
+import { useAppDispatch } from '../store';
+import { createExpenseAsync, fetchExpensesAsync } from '../store/slices/expenseSlice';
 
 interface ExpenseFormProps {
   onExpenseAdded: () => void;
 }
 
 const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
+  const dispatch = useAppDispatch();
   const [formData, setFormData] = useState<ExpenseFormData>({
     amount: 0,
     category: ExpenseCategory.OTHER,
@@ -28,7 +31,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
   });
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
   const [loading, setLoading] = useState<boolean>(false);
-  const [success, setSuccess] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
   const handleInputChange = (field: keyof ExpenseFormData) => (
@@ -55,11 +57,18 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess(false);
 
     try {
-      await apiService.createExpense(formData);
-      setSuccess(true);
+      const result = await dispatch(createExpenseAsync(formData) as any).unwrap();
+      console.log('Expense created successfully:', result);
+      
+      // Show success toast
+      toast.success('Expense created successfully!');
+      
+      // Refresh the expenses list in the background
+      dispatch(fetchExpensesAsync({}));
+      
+      // Reset form
       setFormData({
         amount: 0,
         category: ExpenseCategory.OTHER,
@@ -67,9 +76,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
         date: new Date(),
       });
       setSelectedDate(dayjs());
+      
+      // Navigate to expense list
       onExpenseAdded();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create expense. Please try again.');
+      console.error('Error creating expense:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create expense. Please try again.';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -85,12 +99,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
 
       <Card>
         <CardContent>
-          {success && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              Expense added successfully!
-            </Alert>
-          )}
-
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
