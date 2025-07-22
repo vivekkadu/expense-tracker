@@ -17,12 +17,12 @@ import {
 import { useAppDispatch } from '@/store';
 import { fetchStatsAsync } from '@/store/slices/expenseSlice';
 import Dashboard from '@/components/Dashboard';
-import { 
-  TrendingUp, 
-  Analytics, 
+import {
+  TrendingUp,
+  Analytics,
   Refresh,
   Dashboard as DashboardIcon,
-  Insights
+  Insights,
 } from '@mui/icons-material';
 
 const DashboardPage: React.FC = () => {
@@ -69,19 +69,11 @@ const DashboardPage: React.FC = () => {
           <Paper
             elevation={3}
             sx={{
-              padding: 3,
+              padding: 1,
               borderRadius: 2,
-              backgroundColor: alpha(theme.palette.background.paper, 0.9),
-              backdropFilter: 'blur(10px)',
             }}
           >
-         
-
-         
-
-            <Box>
-              <Dashboard refreshTrigger={refreshTrigger} />
-            </Box>
+            <Dashboard refreshTrigger={refreshTrigger} />
           </Paper>
         </Fade>
       </Container>

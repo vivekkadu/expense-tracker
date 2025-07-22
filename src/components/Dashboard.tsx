@@ -11,7 +11,7 @@ import {
   CardActions,
   Chip,
   useTheme,
-  alpha,
+  Divider,
 } from '@mui/material';
 import {
   TrendingUp,
@@ -111,24 +111,36 @@ const Dashboard: React.FC<DashboardProps> = ({ refreshTrigger }) => {
   const totalAmountFromCategories = calculateTotalFromCategories();
 
   return (
-    <Box sx={{ p: 0.4 }}>
-      <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
+    <Box sx={{ p: 3, minHeight: '100vh' }}>
+      <Typography variant="h5" gutterBottom sx={{ mb: 2, fontWeight: 600, color: '#333' }}>
         Dashboard
       </Typography>
+      <Divider sx={{ mb: 2 }} />
       
-      <Stack spacing={5}>
+      <Stack spacing={4}>
         {/* Quick Actions */}
         <Box>
-          <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom sx={{ mb: 3, color: '#555' }}>
             Quick Actions
           </Typography>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
-              <Card sx={{ height: '100%', transition: 'transform 0.3s', '&:hover': { transform: 'translateY(-5px)' } }}>
+              <Card 
+                sx={{ 
+                  height: '100%', 
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
+                  border: '1px solid #e0e0e0',
+                  '&:hover': { 
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    transform: 'translateY(-2px)',
+                    transition: 'all 0.3s ease'
+                  }
+                }}
+              >
                 <CardContent sx={{ p: 3 }}>
                   <Box display="flex" alignItems="center" mb={2}>
-                    <Add color="primary" sx={{ mr: 2, fontSize: 30 }} />
-                    <Typography variant="h6">
+                    <Add sx={{ mr: 2, fontSize: 28, color: '#666' }} />
+                    <Typography variant="h6" sx={{ color: '#333' }}>
                       Add New Expense
                     </Typography>
                   </Box>
@@ -136,13 +148,17 @@ const Dashboard: React.FC<DashboardProps> = ({ refreshTrigger }) => {
                     Quickly add a new expense entry
                   </Typography>
                 </CardContent>
-                <CardActions sx={{ p: 2 }}>
+                <CardActions sx={{ p: 3, pt: 0 }}>
                   <Button 
                     size="medium" 
                     variant="contained" 
                     onClick={() => navigate('/expenses/create')}
                     fullWidth
-                    sx={{ borderRadius: 2 }}
+                    sx={{ 
+                      borderRadius: 2,
+                      backgroundColor: '#1976d2',
+                      '&:hover': { backgroundColor: '#1565c0' }
+                    }}
                   >
                     Add Expense
                   </Button>
@@ -150,11 +166,22 @@ const Dashboard: React.FC<DashboardProps> = ({ refreshTrigger }) => {
               </Card>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Card sx={{ height: '100%', transition: 'transform 0.3s', '&:hover': { transform: 'translateY(-5px)' } }}>
+              <Card 
+                sx={{ 
+                  height: '100%', 
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
+                  border: '1px solid #e0e0e0',
+                  '&:hover': { 
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    transform: 'translateY(-2px)',
+                    transition: 'all 0.3s ease'
+                  }
+                }}
+              >
                 <CardContent sx={{ p: 3 }}>
                   <Box display="flex" alignItems="center" mb={2}>
-                    <Receipt color="secondary" sx={{ mr: 2, fontSize: 30 }} />
-                    <Typography variant="h6">
+                    <Receipt sx={{ mr: 2, fontSize: 28, color: '#666' }} />
+                    <Typography variant="h6" sx={{ color: '#333' }}>
                       View All Expenses
                     </Typography>
                   </Box>
@@ -162,13 +189,21 @@ const Dashboard: React.FC<DashboardProps> = ({ refreshTrigger }) => {
                     Browse and manage your expenses
                   </Typography>
                 </CardContent>
-                <CardActions sx={{ p: 2 }}>
+                <CardActions sx={{ p: 3, pt: 0 }}>
                   <Button 
                     size="medium" 
                     variant="outlined" 
                     onClick={() => navigate('/expenses')}
                     fullWidth
-                    sx={{ borderRadius: 2 }}
+                    sx={{ 
+                      borderRadius: 2,
+                      borderColor: '#1976d2',
+                      color: '#1976d2',
+                      '&:hover': { 
+                        borderColor: '#1565c0',
+                        backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                      }
+                    }}
                   >
                     View Expenses
                   </Button>
@@ -180,20 +215,24 @@ const Dashboard: React.FC<DashboardProps> = ({ refreshTrigger }) => {
 
         {/* Stats Overview Cards */}
         <Box>
-          <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom sx={{ mb: 3, color: '#555' }}>
             Overview
           </Typography>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ background: alpha(theme.palette.primary.light, 0.1), height: '100%' }}>
+              <Card sx={{ 
+                height: '100%', 
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
+                border: '1px solid #e0e0e0'
+              }}>
                 <CardContent sx={{ p: 3 }}>
                   <Box display="flex" alignItems="center">
-                    <AccountBalanceWallet color="primary" sx={{ mr: 2, fontSize: 30 }} />
+                    <AccountBalanceWallet sx={{ mr: 2, fontSize: 28, color: '#666' }} />
                     <Box>
-                      <Typography color="text.secondary" gutterBottom>
+                      <Typography color="text.secondary" gutterBottom variant="body2">
                         Total Amount
                       </Typography>
-                      <Typography variant="h5" color="primary">
+                      <Typography variant="h5" sx={{ color: '#333', fontWeight: 600 }}>
                         ${totalAmountFromCategories.toFixed(2)}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
@@ -205,15 +244,19 @@ const Dashboard: React.FC<DashboardProps> = ({ refreshTrigger }) => {
               </Card>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ background: alpha(theme.palette.warning.light, 0.1), height: '100%' }}>
+              <Card sx={{ 
+                height: '100%', 
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
+                border: '1px solid #e0e0e0'
+              }}>
                 <CardContent sx={{ p: 3 }}>
                   <Box display="flex" alignItems="center">
-                    <PendingActions color="warning" sx={{ mr: 2, fontSize: 30 }} />
+                    <PendingActions sx={{ mr: 2, fontSize: 28, color: '#ff9800' }} />
                     <Box>
-                      <Typography color="text.secondary" gutterBottom>
+                      <Typography color="text.secondary" gutterBottom variant="body2">
                         Pending Expenses
                       </Typography>
-                      <Typography variant="h5" color="warning">
+                      <Typography variant="h5" sx={{ color: '#ff9800', fontWeight: 600 }}>
                         {totalStats?.pendingExpenses || 0}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
@@ -225,15 +268,19 @@ const Dashboard: React.FC<DashboardProps> = ({ refreshTrigger }) => {
               </Card>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ background: alpha(theme.palette.success.light, 0.1), height: '100%' }}>
+              <Card sx={{ 
+                height: '100%', 
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
+                border: '1px solid #e0e0e0'
+              }}>
                 <CardContent sx={{ p: 3 }}>
                   <Box display="flex" alignItems="center">
-                    <CheckCircle color="success" sx={{ mr: 2, fontSize: 30 }} />
+                    <CheckCircle sx={{ mr: 2, fontSize: 28, color: '#4caf50' }} />
                     <Box>
-                      <Typography color="text.secondary" gutterBottom>
+                      <Typography color="text.secondary" gutterBottom variant="body2">
                         Approved Amount
                       </Typography>
-                      <Typography variant="h5" color="success">
+                      <Typography variant="h5" sx={{ color: '#4caf50', fontWeight: 600 }}>
                         ${parseFloat(totalStats?.totalApprovedAmount || '0').toFixed(2)}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
@@ -245,15 +292,19 @@ const Dashboard: React.FC<DashboardProps> = ({ refreshTrigger }) => {
               </Card>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ background: alpha(theme.palette.error.light, 0.1), height: '100%' }}>
+              <Card sx={{ 
+                height: '100%', 
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
+                border: '1px solid #e0e0e0'
+              }}>
                 <CardContent sx={{ p: 3 }}>
                   <Box display="flex" alignItems="center">
-                    <Cancel color="error" sx={{ mr: 2, fontSize: 30 }} />
+                    <Cancel sx={{ mr: 2, fontSize: 28, color: '#f44336' }} />
                     <Box>
-                      <Typography color="text.secondary" gutterBottom>
+                      <Typography color="text.secondary" gutterBottom variant="body2">
                         Rejected Expenses
                       </Typography>
-                      <Typography variant="h5" color="error">
+                      <Typography variant="h5" sx={{ color: '#f44336', fontWeight: 600 }}>
                         {totalStats?.rejectedExpenses || 0}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
@@ -269,27 +320,38 @@ const Dashboard: React.FC<DashboardProps> = ({ refreshTrigger }) => {
         
         {/* Category Breakdown */}
         <Box>
-          <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom sx={{ mb: 3, color: '#555' }}>
             Category Breakdown
           </Typography>
           <Grid container spacing={3}>
             {categoryStats?.map((category: { category: string; count: number; totalAmount: string }, index: number) => (
               <Grid item xs={12} sm={6} md={3} key={category.category}>
-                <Card sx={{ height: '100%', transition: 'transform 0.3s', '&:hover': { transform: 'translateY(-5px)' } }}>
+                <Card sx={{ 
+                  height: '100%', 
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
+                  border: '1px solid #e0e0e0',
+                  '&:hover': { 
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    transform: 'translateY(-2px)',
+                    transition: 'all 0.3s ease'
+                  }
+                }}>
                   <CardContent sx={{ p: 3 }}>
                     <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                      <Typography variant="h6" component="div">
+                      <Typography variant="h6" component="div" sx={{ color: '#333' }}>
                         {category.category}
                       </Typography>
                       <Chip 
                         label={category.count} 
                         size="small" 
-                        color="primary" 
-                        variant="outlined"
-                        sx={{ fontWeight: 'bold' }}
+                        sx={{ 
+                          backgroundColor: '#f5f5f5',
+                          color: '#666',
+                          fontWeight: 'bold'
+                        }}
                       />
                     </Box>
-                    <Typography variant="h4" color="primary" gutterBottom>
+                    <Typography variant="h4" sx={{ color: '#1976d2', fontWeight: 600 }} gutterBottom>
                       ${parseFloat(category.totalAmount || '0').toFixed(2)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
@@ -308,10 +370,12 @@ const Dashboard: React.FC<DashboardProps> = ({ refreshTrigger }) => {
         {/* Charts */}
         {stats && (
           <Box>
-            <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+            <Typography variant="h6" gutterBottom sx={{ mb: 3, color: '#555' }}>
               Analytics
             </Typography>
-            <ExpenseChart stats={stats} />
+            <Card>
+                <ExpenseChart stats={stats} />
+            </Card>
           </Box>
         )}
       </Stack>

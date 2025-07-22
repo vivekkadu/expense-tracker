@@ -15,7 +15,10 @@ import { toast } from 'react-toastify';
 import { ExpenseFormData, ExpenseCategory } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants';
 import { useAppDispatch } from '../store';
-import { createExpenseAsync, fetchExpensesAsync } from '../store/slices/expenseSlice';
+import {
+  createExpenseAsync,
+  fetchExpensesAsync,
+} from '../store/slices/expenseSlice';
 
 interface ExpenseFormProps {
   onExpenseAdded: () => void;
@@ -33,20 +36,23 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const handleInputChange = (field: keyof ExpenseFormData) => (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const value = field === 'amount' ? parseFloat(event.target.value) || 0 : event.target.value;
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
+  const handleInputChange =
+    (field: keyof ExpenseFormData) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value =
+        field === 'amount'
+          ? parseFloat(event.target.value) || 0
+          : event.target.value;
+      setFormData(prev => ({
+        ...prev,
+        [field]: value,
+      }));
+    };
 
   const handleDateChange = (newDate: Dayjs | null) => {
     setSelectedDate(newDate);
     if (newDate) {
-      setFormData((prev) => ({
+      setFormData(prev => ({
         ...prev,
         date: newDate.toDate(),
       }));
@@ -59,15 +65,17 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
     setError('');
 
     try {
-      const result = await dispatch(createExpenseAsync(formData) as any).unwrap();
+      const result = await dispatch(
+        createExpenseAsync(formData) as any
+      ).unwrap();
       console.log('Expense created successfully:', result);
-      
+
       // Show success toast
       toast.success('Expense created successfully!');
-      
+
       // Refresh the expenses list in the background
       dispatch(fetchExpensesAsync({}));
-      
+
       // Reset form
       setFormData({
         amount: 0,
@@ -76,12 +84,15 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
         date: new Date(),
       });
       setSelectedDate(dayjs());
-      
+
       // Navigate to expense list
       onExpenseAdded();
     } catch (err: unknown) {
       console.error('Error creating expense:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create expense. Please try again.';
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'Failed to create expense. Please try again.';
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -89,13 +100,19 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
     }
   };
 
-  const isFormValid = formData.amount > 0 && formData.category && formData.description && formData.date;
+  const isFormValid =
+    formData.amount > 0 &&
+    formData.category &&
+    formData.description &&
+    formData.date;
 
   return (
     <Box>
       <Typography variant="h6" gutterBottom>
         Add New Expense
       </Typography>
+
+      
 
       <Card>
         <CardContent>
@@ -126,7 +143,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
                   onChange={handleInputChange('category')}
                   required
                 >
-                  {EXPENSE_CATEGORIES.map((category) => (
+                  {EXPENSE_CATEGORIES.map(category => (
                     <MenuItem key={category} value={category}>
                       {category}
                     </MenuItem>
@@ -149,7 +166,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
                   label="Date"
                   type="date"
                   value={selectedDate ? selectedDate.format('YYYY-MM-DD') : ''}
-                  onChange={(e) => {
+                  onChange={e => {
                     const newDate = dayjs(e.target.value);
                     handleDateChange(newDate.isValid() ? newDate : null);
                   }}

@@ -19,7 +19,7 @@ const CreateExpensePage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container sx={{ my: 2, py: 2, mx: 2, backgroundColor: '#ffff' }}>
       <Stack spacing={3}>
         <Box>
           <Button
@@ -29,18 +29,9 @@ const CreateExpensePage: React.FC = () => {
           >
             Back to Expenses
           </Button>
-          
-          <Typography variant="h4" component="h1" gutterBottom>
-            Add New Expense
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Fill in the details below to submit a new expense
-          </Typography>
         </Box>
-        
-        <Paper sx={{ p: 3 }}>
-          <ExpenseForm onExpenseAdded={handleExpenseAdded} />
-        </Paper>
+
+        <ExpenseForm onExpenseAdded={handleExpenseAdded} />
       </Stack>
     </Container>
   );
