@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -16,18 +16,22 @@ import {
   TextField,
   MenuItem,
   Stack,
-  Pagination
+  Pagination,
+  CircularProgress,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import { CheckCircle, Cancel, Pending } from '@mui/icons-material';
-import { Expense, User } from '../types';
+import { Expense, User, ExpenseFilters } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants';
 import { useAppDispatch } from '../store';
-import { updateExpenseAsync } from '../store/slices/expenseSlice';
-import { updateExpenseStatusAsync } from '../store/slices/expenseSlice';
-import { expenseService } from '../services/expenseService';
+import {
+  updateExpenseStatusAsync,
+  fetchExpensesAsync,
+} from '../store/slices/expenseSlice';
 
 interface ExpenseListProps {
-  currentUser: User | null;  // Allow null
+  currentUser: User | null;
   expenses: Expense[];
   pagination: {
     page: number;
@@ -37,31 +41,151 @@ interface ExpenseListProps {
   };
   refreshTrigger: number;
   onRefresh: () => void;
+  onPageChange: (page: number) => void;
+  onFiltersChange: (filters: ExpenseFilters) => void;
+  filters: ExpenseFilters;
 }
 
-const ExpenseList: React.FC<ExpenseListProps> = ({ 
-  currentUser, 
-  expenses, 
-  pagination, 
-  refreshTrigger, 
-  onRefresh 
+interface ToastState {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error';
+}
+
+const ExpenseList: React.FC<ExpenseListProps> = ({
+  currentUser,
+  expenses,
+  pagination,
+  refreshTrigger,
+  onRefresh,
+  onPageChange,
+  onFiltersChange,
+  filters,
 }) => {
   const dispatch = useAppDispatch();
-  const [filter, setFilter] = useState({
-    category: '',
-    status: ''
+  const [loadingExpenses, setLoadingExpenses] = useState<Set<string>>(
+    new Set()
+  );
+  const [optimisticUpdates, setOptimisticUpdates] = useState<
+    Map<string, 'approved' | 'rejected'>
+  >(new Map());
+  const [toast, setToast] = useState<ToastState>({
+    open: false,
+    message: '',
+    severity: 'success',
   });
 
-  const handleStatusUpdate = async (expenseId: string, status: 'approved' | 'rejected') => {
+  // Background data refresh after successful status update
+  const refreshDataInBackground = useCallback(async () => {
     try {
-      await dispatch(updateExpenseStatusAsync({ id: expenseId, status }) as any).unwrap();
-      onRefresh();
+      await dispatch(
+        fetchExpensesAsync({
+          page: pagination.page,
+          limit: pagination.limit,
+          filters,
+        }) as any
+      ).unwrap();
     } catch (error) {
-      console.error('Failed to update expense status:', error);
+      console.error('Background refresh failed:', error);
     }
-  };
+  }, [dispatch, pagination.page, pagination.limit, filters]);
 
-  const getStatusIcon = (status: string) => {
+  // Show toast notification
+  const showToast = useCallback(
+    (message: string, severity: 'success' | 'error') => {
+      setToast({
+        open: true,
+        message,
+        severity,
+      });
+    },
+    []
+  );
+
+  // Close toast
+  const handleCloseToast = useCallback(() => {
+    setToast(prev => ({ ...prev, open: false }));
+  }, []);
+
+  // Optimized status update with background refresh and toast
+  const handleStatusUpdate = useCallback(
+    async (expenseId: string, status: 'approved' | 'rejected') => {
+      // Add to loading state
+      setLoadingExpenses(prev => new Set(prev).add(expenseId));
+
+      // Optimistic update
+      setOptimisticUpdates(prev => new Map(prev).set(expenseId, status));
+
+      try {
+        await dispatch(
+          updateExpenseStatusAsync({ id: expenseId, status }) as any
+        ).unwrap();
+
+        // Success - show toast and refresh data in background
+        const statusText = status === 'approved' ? 'approved' : 'rejected';
+        showToast(`Expense ${statusText} successfully!`, 'success');
+
+        // Remove optimistic update
+        setOptimisticUpdates(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(expenseId);
+          return newMap;
+        });
+
+        // Refresh data in background without showing loading state
+        setTimeout(() => {
+          refreshDataInBackground();
+        }, 500); // Small delay to let user see the optimistic update
+      } catch (error) {
+        console.error('Failed to update expense status:', error);
+
+        // Show error toast
+        showToast(
+          'Failed to update expense status. Please try again.',
+          'error'
+        );
+
+        // Revert optimistic update on error
+        setOptimisticUpdates(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(expenseId);
+          return newMap;
+        });
+      } finally {
+        // Remove from loading state
+        setLoadingExpenses(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(expenseId);
+          return newSet;
+        });
+      }
+    },
+    [dispatch, showToast, refreshDataInBackground]
+  );
+
+  // Debounced filter change
+  const handleFilterChange = useCallback(
+    (filterType: keyof ExpenseFilters, value: string) => {
+      const newFilters = {
+        ...filters,
+        [filterType]: value || undefined,
+      };
+      onFiltersChange(newFilters);
+    },
+    [filters, onFiltersChange]
+  );
+
+  // Memoized expenses with optimistic updates
+  const displayExpenses = useMemo(() => {
+    return expenses.map(expense => {
+      const optimisticStatus = optimisticUpdates.get(expense.id);
+      return optimisticStatus
+        ? { ...expense, status: optimisticStatus }
+        : expense;
+    });
+  }, [expenses, optimisticUpdates]);
+
+  const getStatusIcon = useCallback((status: string) => {
     switch (status) {
       case 'approved':
         return <CheckCircle color="success" />;
@@ -70,39 +194,38 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
       default:
         return <Pending color="warning" />;
     }
-  };
+  }, []);
 
-  const getStatusColor = (status: string): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
-    switch (status) {
-      case 'approved':
-        return 'success';
-      case 'rejected':
-        return 'error';
-      default:
-        return 'warning';
-    }
-  };
+  const getStatusColor = useCallback(
+    (
+      status: string
+    ):
+      | 'default'
+      | 'primary'
+      | 'secondary'
+      | 'error'
+      | 'info'
+      | 'success'
+      | 'warning' => {
+      switch (status) {
+        case 'approved':
+          return 'success';
+        case 'rejected':
+          return 'error';
+        default:
+          return 'warning';
+      }
+    },
+    []
+  );
 
-  const filteredExpenses = expenses.filter(expense => {
-    const categoryMatch = !filter.category || expense.category === filter.category;
-    const statusMatch = !filter.status || expense.status === filter.status;
-    return categoryMatch && statusMatch;
-  });
-
-  console.log('ExpenseList: Received expenses:', expenses);
-  console.log('ExpenseList: Current user:', currentUser);
-  
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        Expenses {currentUser?.role === 'admin' && '(All Team Members)'}
-      </Typography>
-      
-      {/* Add debug info */}
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Total expenses: {expenses?.length || 0}
+        Total expenses: {pagination.total} | Page {pagination.page} of{' '}
+        {pagination.totalPages}
       </Typography>
-      
+
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
@@ -113,23 +236,23 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
               sx={{ flex: 1 }}
               select
               label="Category"
-              value={filter.category}
-              onChange={(e) => setFilter(prev => ({ ...prev, category: e.target.value }))}
+              value={filters.category || ''}
+              onChange={e => handleFilterChange('category', e.target.value)}
             >
               <MenuItem value="">All Categories</MenuItem>
-              {EXPENSE_CATEGORIES.map((category) => (
+              {EXPENSE_CATEGORIES.map(category => (
                 <MenuItem key={category} value={category}>
                   {category}
                 </MenuItem>
               ))}
             </TextField>
-            
+
             <TextField
               sx={{ flex: 1 }}
               select
               label="Status"
-              value={filter.status}
-              onChange={(e) => setFilter(prev => ({ ...prev, status: e.target.value }))}
+              value={filters.status || ''}
+              onChange={e => handleFilterChange('status', e.target.value)}
             >
               <MenuItem value="">All Statuses</MenuItem>
               <MenuItem value="pending">Pending</MenuItem>
@@ -139,7 +262,7 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
           </Stack>
         </CardContent>
       </Card>
-      
+
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -154,61 +277,105 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredExpenses.map((expense) => (
-              <TableRow key={expense.id}>
-                <TableCell>{expense.date.toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })}</TableCell>
-                <TableCell>${expense.amount.toFixed(2)}</TableCell>
-                <TableCell>{expense.category}</TableCell>
-                <TableCell>{expense.description}</TableCell>
-                {currentUser?.role === 'admin' && (
+            {displayExpenses.map(expense => {
+              const isLoading = loadingExpenses.has(expense.id);
+              const hasOptimisticUpdate = optimisticUpdates.has(expense.id);
+
+              return (
+                <TableRow
+                  key={expense.id}
+                  sx={{
+                    opacity: isLoading ? 0.7 : 1,
+                    backgroundColor: hasOptimisticUpdate
+                      ? 'action.hover'
+                      : 'inherit',
+                    transition: 'all 0.3s ease',
+                  }}
+                >
                   <TableCell>
-                    {expense.user ? `${expense.user.firstName} ${expense.user.lastName}` : 'Unknown'}
+                    {expense.date.toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
                   </TableCell>
-                )}
-                <TableCell>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    {getStatusIcon(expense.status)}
-                    <Chip
-                      label={expense.status.charAt(0).toUpperCase() + expense.status.slice(1)}
-                      color={getStatusColor(expense.status)}
-                      size="small"
-                    />
-                  </Box>
-                </TableCell>
-                {currentUser?.role === 'admin' && (
+                  <TableCell>${expense.amount.toFixed(2)}</TableCell>
+                  <TableCell>{expense.category}</TableCell>
+                  <TableCell>{expense.description}</TableCell>
+                  {currentUser?.role === 'admin' && (
+                    <TableCell>
+                      {expense.user
+                        ? `${expense.user.firstName} ${expense.user.lastName}`
+                        : 'Unknown'}
+                    </TableCell>
+                  )}
                   <TableCell>
-                    {expense.status === 'pending' && (
-                      <Stack direction="row" spacing={1}>
-                        <Button
-                          size="small"
-                          variant="contained"
-                          color="success"
-                          onClick={() => handleStatusUpdate(expense.id, 'approved')}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="contained"
-                          color="error"
-                          onClick={() => handleStatusUpdate(expense.id, 'rejected')}
-                        >
-                          Reject
-                        </Button>
-                      </Stack>
-                    )}
+                    <Box display="flex" alignItems="center" gap={1}>
+                      {getStatusIcon(expense.status)}
+                      <Chip
+                        label={
+                          expense.status.charAt(0).toUpperCase() +
+                          expense.status.slice(1)
+                        }
+                        color={getStatusColor(expense.status)}
+                        size="small"
+                        sx={{
+                          transition: 'all 0.3s ease',
+                          ...(hasOptimisticUpdate && {
+                            animation: 'pulse 1s infinite',
+                          }),
+                        }}
+                      />
+                      {isLoading && <CircularProgress size={16} />}
+                    </Box>
                   </TableCell>
-                )}
-              </TableRow>
-            ))}
+                  {currentUser?.role === 'admin' && (
+                    <TableCell>
+                      {expense.status === 'pending' && (
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="success"
+                            disabled={isLoading}
+                            onClick={() =>
+                              handleStatusUpdate(expense.id, 'approved')
+                            }
+                            sx={{ minWidth: '80px' }}
+                          >
+                            {isLoading ? (
+                              <CircularProgress size={16} color="inherit" />
+                            ) : (
+                              'Approve'
+                            )}
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="error"
+                            disabled={isLoading}
+                            onClick={() =>
+                              handleStatusUpdate(expense.id, 'rejected')
+                            }
+                            sx={{ minWidth: '80px' }}
+                          >
+                            {isLoading ? (
+                              <CircularProgress size={16} color="inherit" />
+                            ) : (
+                              'Reject'
+                            )}
+                          </Button>
+                        </Stack>
+                      )}
+                    </TableCell>
+                  )}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>
-      
+
       {/* Pagination */}
       {pagination.totalPages > 1 && (
         <Box display="flex" justifyContent="center" mt={3}>
@@ -216,31 +383,57 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
             count={pagination.totalPages}
             page={pagination.page}
             onChange={(event, page) => {
-              // Pagination handling would be done in parent component
-              // For now, we'll just call onRefresh
-              onRefresh();
+              onPageChange(page);
             }}
             color="primary"
           />
         </Box>
       )}
-      
+
       {/* Results summary */}
       <Box mt={2} textAlign="center">
         <Typography variant="body2" color="text.secondary">
-          Showing {filteredExpenses.length} of {pagination.total} expenses
+          Showing {displayExpenses.length} of {pagination.total} expenses
         </Typography>
       </Box>
-      
-      {filteredExpenses.length === 0 && (
+
+      {displayExpenses.length === 0 && (
         <Box textAlign="center" py={4}>
           <Typography variant="h6" color="text.secondary">
             No expenses found
           </Typography>
         </Box>
       )}
+
+      {/* Toast Notification */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={4000}
+        onClose={handleCloseToast}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={handleCloseToast}
+          severity={toast.severity}
+          sx={{ width: '100%' }}
+          variant="filled"
+        >
+          {toast.message}
+        </Alert>
+      </Snackbar>
+
+      {/* Add CSS for pulse animation */}
+      <style>
+        {`
+          @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+          }
+        `}
+      </style>
     </Box>
   );
 };
 
-export default ExpenseList;
+export default React.memo(ExpenseList);

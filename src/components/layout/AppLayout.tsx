@@ -211,7 +211,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: 0.5,
           width: { md: `calc(100% - ${drawerWidth}px)` },
           mt: '64px',
           bgcolor: 'background.default',

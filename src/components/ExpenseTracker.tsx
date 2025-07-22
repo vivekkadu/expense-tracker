@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Container,
   AppBar,
   Toolbar,
+  Container,
   Typography,
   Tabs,
   Tab,
@@ -12,10 +12,10 @@ import {
   IconButton,
 } from '@mui/material';
 import { AccountCircle, ExitToApp } from '@mui/icons-material';
-import { User } from '../types';
+import { User, ExpenseFilters } from '../types';
 import { authService } from '../services/authService';
 import { useAppDispatch, useAppSelector } from '../store';
-import { fetchExpensesAsync } from '../store/slices/expenseSlice';
+import { fetchExpensesAsync, setPage } from '../store/slices/expenseSlice';
 import Dashboard from './Dashboard';
 import ExpenseList from './ExpenseList';
 import ExpenseForm from './ExpenseForm';
@@ -48,6 +48,7 @@ const ExpenseTracker: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [filters, setFilters] = useState<ExpenseFilters>({}); // Add filters state
 
   const dispatch = useAppDispatch();
   const expensesState = useAppSelector(state => state.expenses);
@@ -70,9 +71,9 @@ const ExpenseTracker: React.FC = () => {
 
   useEffect(() => {
     if (currentUser) {
-      dispatch(fetchExpensesAsync({}) as any);
+      dispatch(fetchExpensesAsync({ filters }) as any);
     }
-  }, [currentUser, refreshTrigger, dispatch]);
+  }, [currentUser, refreshTrigger, dispatch, filters]);
 
   const handleLogin = async (email: string, password: string) => {
     try {
@@ -115,7 +116,32 @@ const ExpenseTracker: React.FC = () => {
   const handleRefresh = () => {
     setRefreshTrigger(prev => prev + 1);
     if (currentUser) {
-      dispatch(fetchExpensesAsync({}) as any);
+      dispatch(fetchExpensesAsync({ filters }) as any);
+    }
+  };
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    dispatch(setPage(page));
+    if (currentUser) {
+      dispatch(fetchExpensesAsync({ 
+        page, 
+        limit: pagination.limit,
+        filters 
+      }) as any);
+    }
+  };
+
+  // Handle filters change
+  const handleFiltersChange = (newFilters: ExpenseFilters) => {
+    setFilters(newFilters);
+    dispatch(setPage(1)); // Reset to page 1 when filters change
+    if (currentUser) {
+      dispatch(fetchExpensesAsync({ 
+        page: 1, 
+        limit: pagination.limit,
+        filters: newFilters 
+      }) as any);
     }
   };
 
@@ -191,6 +217,9 @@ const ExpenseTracker: React.FC = () => {
               pagination={pagination}
               refreshTrigger={refreshTrigger}
               onRefresh={handleRefresh}
+              onPageChange={handlePageChange}
+              onFiltersChange={handleFiltersChange}
+              filters={filters}
             />
           )}
         </TabPanel>

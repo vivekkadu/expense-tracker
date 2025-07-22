@@ -28,7 +28,7 @@ interface FormErrors {
 
 const LoginPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { isLoading, error } = useAppSelector((state) => state.auth);
+  const { isLoading, error } = useAppSelector(state => state.auth);
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -60,22 +60,22 @@ const LoginPage: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleInputChange = (field: keyof LoginFormData) => (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: event.target.value,
-    }));
-
-    // Clear error for this field when user starts typing
-    if (formErrors[field]) {
-      setFormErrors((prev) => ({
+  const handleInputChange =
+    (field: keyof LoginFormData) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData(prev => ({
         ...prev,
-        [field]: undefined,
+        [field]: event.target.value,
       }));
-    }
-  };
+
+      // Clear error for this field when user starts typing
+      if (formErrors[field]) {
+        setFormErrors(prev => ({
+          ...prev,
+          [field]: undefined,
+        }));
+      }
+    };
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -83,19 +83,21 @@ const LoginPage: React.FC = () => {
     // Clear any previous login errors
     setLoginError(null);
     dispatch(clearError());
-    
+
     // Validate form before submission
     if (!validateForm()) {
       return;
     }
-    
+
     try {
       // Dispatch the login action and unwrap the result
-      const result = await dispatch(loginAsync({
-        email: formData.email,
-        password: formData.password,
-      })).unwrap();
-      
+      const result = await dispatch(
+        loginAsync({
+          email: formData.email,
+          password: formData.password,
+        })
+      ).unwrap();
+
       // Check if login was successful
       if (result.success && result.data.user && result.data.token) {
         // Small delay to ensure state is updated
@@ -108,9 +110,12 @@ const LoginPage: React.FC = () => {
     } catch (error) {
       // Handle login errors
       console.error('Login error:', error);
-      const errorMessage = typeof error === 'string' ? error : 
-                          error instanceof Error ? error.message : 
-                          'Login failed. Please try again.';
+      const errorMessage =
+        typeof error === 'string'
+          ? error
+          : error instanceof Error
+            ? error.message
+            : 'Login failed. Please try again.';
       setLoginError(errorMessage);
     }
   };
@@ -135,7 +140,12 @@ const LoginPage: React.FC = () => {
           }}
         >
           <Box sx={{ textAlign: 'center', mb: 3 }}>
-            <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 600 }}>
+            <Typography
+              variant="h4"
+              component="h1"
+              gutterBottom
+              sx={{ fontWeight: 600 }}
+            >
               Welcome Back
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -183,20 +193,12 @@ const LoginPage: React.FC = () => {
               disabled={isLoading}
               sx={{ mb: 2, py: 1.5 }}
             >
-              {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
+              {isLoading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                'Sign In'
+              )}
             </Button>
-          </Box>
-
-          <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-              Demo Accounts:
-            </Typography>
-            <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-              Employee: employee@company.com / password123
-            </Typography>
-            <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-              Admin: admin@company.com / password123
-            </Typography>
           </Box>
         </Paper>
       </Box>

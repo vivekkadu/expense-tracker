@@ -61,12 +61,10 @@ export interface ExpenseFormData {
 }
 
 export interface ExpenseFilters {
-  status?: ExpenseStatus;
-  category?: ExpenseCategory;
+  category?: string;
+  status?: string;
   dateFrom?: Date;
   dateTo?: Date;
-  userId?: string;
-  search?: string;
 }
 
 export interface DashboardStats {

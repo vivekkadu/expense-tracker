@@ -177,12 +177,55 @@ class ExpenseService {
 
   async updateExpenseStatus(id: string, status: string): Promise<ApiResponse<Expense>> {
     try {
-      const response = await apiClient.put<Expense>('/api/expenses/status', {
+      console.log('Updating expense status:', { id, status });
+      const response = await apiClient.put<any>('/api/expenses/status', {
         expenseId: parseInt(id),
         status: status,
       });
-      return response;
+      
+      console.log('Update status API response:', response);
+      
+      // Handle response data consistently with other methods
+      const apiExpense = response.data || response;
+      
+      // Add validation to ensure we have the required data
+      if (!apiExpense || !apiExpense.id) {
+        throw new Error('Invalid response from server: missing expense data');
+      }
+      
+      // Transform the API response to match our expected Expense format
+      const transformedExpense: Expense = {
+        id: apiExpense.id.toString(),
+        description: apiExpense.description,
+        amount: parseFloat(apiExpense.amount),
+        category: apiExpense.category as any,
+        status: apiExpense.status as any,
+        date: new Date(apiExpense.expenseDate),
+        receipt: apiExpense.receiptUrl || undefined,
+        rejectionReason: apiExpense.rejectionReason || undefined,
+        userId: apiExpense.userId.toString(),
+        approvedBy: apiExpense.approvedBy?.toString() || undefined,
+        createdAt: new Date(apiExpense.createdAt),
+        updatedAt: new Date(apiExpense.updatedAt),
+        user: {
+          id: apiExpense.user.id.toString(),
+          email: apiExpense.user.email,
+          firstName: apiExpense.user.firstName,
+          lastName: apiExpense.user.lastName,
+          role: apiExpense.user.role as any,
+          isActive: apiExpense.user.isActive,
+          createdAt: new Date(apiExpense.user.createdAt),
+          updatedAt: new Date(apiExpense.user.updatedAt),
+        },
+      };
+      
+      return {
+        data: transformedExpense,
+        message: `Expense ${status.toLowerCase()} successfully`,
+        success: true,
+      };
     } catch (error: any) {
+      console.error('Error updating expense status:', error);
       throw new Error(error.response?.data?.message || 'Failed to update expense status');
     }
   }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   Container, 
   Typography, 
@@ -8,64 +8,101 @@ import {
   CircularProgress 
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-import ExpenseList from '@/components/ExpenseList';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store';
-import { fetchExpensesAsync } from '@/store/slices/expenseSlice';
+import { fetchExpensesAsync, setPage } from '@/store/slices/expenseSlice';
+import { ExpenseFilters } from '@/types';
+
+// Lazy load ExpenseList for better performance
+const ExpenseList = React.lazy(() => import('@/components/ExpenseList'));
 
 const ExpensesPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, isLoading: authLoading } = useAppSelector((state) => state.auth);
   const expensesState = useAppSelector((state) => state.expenses);
   const expenses = expensesState.expenses;
   const expensesLoading = expensesState.isLoading;
   const pagination = expensesState.pagination;
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  console.log("expenses", expenses)
+  
+  // Memoized filters from URL
+  const filters = useMemo((): ExpenseFilters => ({
+    category: searchParams.get('category') || undefined,
+    status: searchParams.get('status') || undefined,
+  }), [searchParams]);
+  
+  // Memoized pagination values
+  const currentPage = useMemo(() => {
+    const page = searchParams.get('page');
+    return page ? parseInt(page, 10) : 1;
+  }, [searchParams]);
+  
+  const currentLimit = useMemo(() => {
+    const limit = searchParams.get('limit');
+    return limit ? parseInt(limit, 10) : 10;
+  }, [searchParams]);
 
-  const fetchExpenses = async () => {
+  // Optimized fetch function with debouncing
+  const fetchExpenses = useCallback(async (page?: number, limit?: number, newFilters?: ExpenseFilters) => {
+    if (!user) return;
+    
     try {
-      console.log('ExpensesPage: Starting to fetch expenses');
-      const result = await dispatch(fetchExpensesAsync({}) as any).unwrap();
-      console.log('ExpensesPage: Fetch expenses result:', result);
+      const fetchPage = page ?? currentPage;
+      const fetchLimit = limit ?? currentLimit;
+      const fetchFilters = newFilters ?? filters;
+      
+      await dispatch(fetchExpensesAsync({
+        page: fetchPage,
+        limit: fetchLimit,
+        filters: fetchFilters
+      }) as any).unwrap();
     } catch (error) {
-      console.error('ExpensesPage: Failed to fetch expenses:', error);
+      console.error('Failed to fetch expenses:', error);
     }
-  };
+  }, [user, currentPage, currentLimit, filters, dispatch]);
 
+  // Handle page change
+  const handlePageChange = useCallback((page: number) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('page', page.toString());
+    setSearchParams(newSearchParams);
+    dispatch(setPage(page));
+  }, [searchParams, setSearchParams, dispatch]);
+  
+  // Handle filters change
+  const handleFiltersChange = useCallback((newFilters: ExpenseFilters) => {
+    const newSearchParams = new URLSearchParams();
+    newSearchParams.set('page', '1');
+    newSearchParams.set('limit', currentLimit.toString());
+    
+    if (newFilters.category) {
+      newSearchParams.set('category', newFilters.category);
+    }
+    if (newFilters.status) {
+      newSearchParams.set('status', newFilters.status);
+    }
+    
+    setSearchParams(newSearchParams);
+    dispatch(setPage(1));
+  }, [currentLimit, setSearchParams, dispatch]);
+
+  // Single useEffect for data fetching
   useEffect(() => {
-    console.log('ExpensesPage: Component mounted, user:', user);
     if (user) {
-      fetchExpenses();
+      fetchExpenses(currentPage, currentLimit, filters);
     }
-  }, [user]);
+  }, [user, currentPage, currentLimit, filters, fetchExpenses]);
 
-  useEffect(() => {
-    console.log('ExpensesPage: Expenses updated:', expenses);
-    console.log('ExpensesPage: Expenses length:', expenses?.length);
-  }, [expenses]);
-
-  useEffect(() => {
-    console.log('ExpensesPage: Expenses state updated:', expenses);
-    console.log('ExpensesPage: Expenses loading state:', expensesLoading);
-    console.log('ExpensesPage: Expenses error state:', expensesState.error);
-  }, [expenses, expensesLoading, expensesState.error]);
-
-  const handleRefresh = () => {
+  // Optimized refresh handler
+  const handleRefresh = useCallback(() => {
     setRefreshTrigger(prev => prev + 1);
-    fetchExpenses();
-  };
-
-  // Add useEffect to refetch when returning from create page
-  useEffect(() => {
-    if (user) {
-      fetchExpenses();
-    }
-  }, [user, refreshTrigger]);
+    fetchExpenses(currentPage, currentLimit, filters);
+  }, [fetchExpenses, currentPage, currentLimit, filters]);
 
   // Handle loading state
-  if (authLoading || expensesLoading) {
+  if (authLoading) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -75,7 +112,7 @@ const ExpensesPage: React.FC = () => {
     );
   }
 
-  // Handle case where user is not authenticated or incomplete
+  // Handle case where user is not authenticated
   if (!user || !user.id) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -97,10 +134,7 @@ const ExpensesPage: React.FC = () => {
       >
         <Box>
           <Typography variant="h4" component="h1" gutterBottom>
-            Expenses
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Manage and track your expenses
+            Expenses {user?.role === 'admin' && '(All Team Members)'}
           </Typography>
         </Box>
         
@@ -114,13 +148,22 @@ const ExpensesPage: React.FC = () => {
         </Button>
       </Stack>
       
-      <ExpenseList 
-        currentUser={user} 
-        expenses={expenses || []}
-        pagination={pagination}
-        refreshTrigger={refreshTrigger}
-        onRefresh={handleRefresh}
-      />
+      <React.Suspense fallback={
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+          <CircularProgress />
+        </Box>
+      }>
+        <ExpenseList 
+          currentUser={user} 
+          expenses={expenses || []}
+          pagination={pagination}
+          refreshTrigger={refreshTrigger}
+          onRefresh={handleRefresh}
+          onPageChange={handlePageChange}
+          onFiltersChange={handleFiltersChange}
+          filters={filters}
+        />
+      </React.Suspense>
     </Container>
   );
 };

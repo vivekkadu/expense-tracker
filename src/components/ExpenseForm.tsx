@@ -93,7 +93,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h6" gutterBottom>
         Add New Expense
       </Typography>
 
@@ -106,7 +106,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onExpenseAdded }) => {
           )}
 
           <Box component="form" onSubmit={handleSubmit}>
-            <Stack spacing={3}>
+            <Stack spacing={2}>
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 <TextField
                   sx={{ flex: 1, minWidth: '200px' }}
