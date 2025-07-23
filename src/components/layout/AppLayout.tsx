@@ -95,6 +95,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     },
   ];
 
+  // Filter navigation items based on user role
+  const filteredNavigationItems = navigationItems.filter(item => {
+    if (item.text === 'Add Expense' && user?.role === 'admin') {
+      return false;
+    }
+    return true;
+  });
+
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header Section - Made Smaller */}
@@ -170,7 +178,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       <Box sx={{ flex: 1, p: 1 }}>
       
         <List sx={{ px: 1 }}>
-          {navigationItems.map((item) => {
+          {filteredNavigationItems.map((item) => {
             const isSelected = location.pathname === item.path;
             return (
               <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
@@ -277,7 +285,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           </IconButton>
           
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            {navigationItems.find(item => item.path === location.pathname)?.text || 'Expense Tracker'}
+            {filteredNavigationItems.find(item => item.path === location.pathname)?.text || 'Expense Tracker'}
           </Typography>
           
           {user && (

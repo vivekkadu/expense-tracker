@@ -160,14 +160,16 @@ const ExpensesPage: React.FC = () => {
           </Typography>
         </Box>
         
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => navigate('/expenses/create')}
-          sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
-        >
-          Add Expense
-        </Button>
+        {user?.role !== 'admin' && (
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => navigate('/expenses/create')}
+            sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
+          >
+            Add Expense
+          </Button>
+        )}
       </Stack>
       
       <React.Suspense fallback={
