@@ -25,7 +25,7 @@ import {
   Cancel,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { ExpenseStats } from '../types';
+import { ExpenseStats, UserRole } from '../types';
 import { useAppDispatch, useAppSelector } from '../store';
 import { expenseService } from '../services/expenseService';
 import { fetchStatsAsync } from '../store/slices/expenseSlice';
@@ -38,10 +38,14 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ refreshTrigger }) => {
   const dispatch = useAppDispatch();
   const { stats, isLoading } = useAppSelector((state) => state.expenses);
+  const { user } = useAppSelector((state) => state.auth); // Get current user
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const theme = useTheme();
+
+  // Check if current user is admin
+  const isAdmin = user?.role === UserRole.ADMIN;
 
   useEffect(() => {
     console.log('Dashboard useEffect triggered, refreshTrigger:', refreshTrigger);
@@ -124,48 +128,51 @@ const Dashboard: React.FC<DashboardProps> = ({ refreshTrigger }) => {
             Quick Actions
           </Typography>
           <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
-              <Card 
-                sx={{ 
-                  height: '100%', 
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
-                  border: '1px solid #e0e0e0',
-                  '&:hover': { 
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    transform: 'translateY(-2px)',
-                    transition: 'all 0.3s ease'
-                  }
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box display="flex" alignItems="center" mb={2}>
-                    <Add sx={{ mr: 2, fontSize: 28, color: '#666' }} />
-                    <Typography variant="h6" sx={{ color: '#333' }}>
-                      Add New Expense
+            {/* Conditionally render Add New Expense card only for non-admin users */}
+            {!isAdmin && (
+              <Grid item xs={12} sm={6}>
+                <Card 
+                  sx={{ 
+                    height: '100%', 
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
+                    border: '1px solid #e0e0e0',
+                    '&:hover': { 
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                      transform: 'translateY(-2px)',
+                      transition: 'all 0.3s ease'
+                    }
+                  }}
+                >
+                  <CardContent sx={{ p: 3 }}>
+                    <Box display="flex" alignItems="center" mb={2}>
+                      <Add sx={{ mr: 2, fontSize: 28, color: '#666' }} />
+                      <Typography variant="h6" sx={{ color: '#333' }}>
+                        Add New Expense
+                      </Typography>
+                    </Box>
+                    <Typography color="text.secondary" variant="body2">
+                      Quickly add a new expense entry
                     </Typography>
-                  </Box>
-                  <Typography color="text.secondary" variant="body2">
-                    Quickly add a new expense entry
-                  </Typography>
-                </CardContent>
-                <CardActions sx={{ p: 3, pt: 0 }}>
-                  <Button 
-                    size="medium" 
-                    variant="contained" 
-                    onClick={() => navigate('/expenses/create')}
-                    fullWidth
-                    sx={{ 
-                      borderRadius: 2,
-                      backgroundColor: '#1976d2',
-                      '&:hover': { backgroundColor: '#1565c0' }
-                    }}
-                  >
-                    Add Expense
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6}>
+                  </CardContent>
+                  <CardActions sx={{ p: 3, pt: 0 }}>
+                    <Button 
+                      size="medium" 
+                      variant="contained" 
+                      onClick={() => navigate('/expenses/create')}
+                      fullWidth
+                      sx={{ 
+                        borderRadius: 2,
+                        backgroundColor: '#1976d2',
+                        '&:hover': { backgroundColor: '#1565c0' }
+                      }}
+                    >
+                      Add Expense
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            )}
+            <Grid item xs={12} sm={isAdmin ? 12 : 6}>
               <Card 
                 sx={{ 
                   height: '100%', 
